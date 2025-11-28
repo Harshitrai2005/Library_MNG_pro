@@ -2,7 +2,8 @@ import { createSlice } from "@reduxjs/toolkit";
 import axios from "axios";
 import { toggleRecordBookPopup } from "./popUpSlice";
 
-const API = "http://localhost:4000/api/v1/borrow";
+// Use environment variable for backend URL
+const BASE_URL = import.meta.env.VITE_BACKEND_URL || "http://localhost:4000";
 
 const borrowSlice = createSlice({
   name: "borrow",
@@ -14,53 +15,27 @@ const borrowSlice = createSlice({
     allBorrowedBooks: [],
   },
   reducers: {
-    fetchUserBorrowedBooksRequest: (state) => {
-      state.loading = true;
-    },
+    fetchUserBorrowedBooksRequest: (state) => { state.loading = true; },
     fetchUserBorrowedBooksSuccess: (state, action) => {
       state.loading = false;
       state.userBorrowedBooks = action.payload;
     },
-    fetchUserBorrowedBooksFailed: (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-    },
+    fetchUserBorrowedBooksFailed: (state, action) => { state.loading = false; state.error = action.payload; },
 
-    fetchAllBorrowedBooksRequest: (state) => {
-      state.loading = true;
-    },
+    fetchAllBorrowedBooksRequest: (state) => { state.loading = true; },
     fetchAllBorrowedBooksSuccess: (state, action) => {
       state.loading = false;
       state.allBorrowedBooks = action.payload;
     },
-    fetchAllBorrowedBooksFailed: (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-    },
+    fetchAllBorrowedBooksFailed: (state, action) => { state.loading = false; state.error = action.payload; },
 
-    recordBorrowedBookRequest: (state) => {
-      state.loading = true;
-    },
-    recordBorrowedBookSuccess: (state, action) => {
-      state.loading = false;
-      state.message = action.payload;
-    },
-    recordBorrowedBookFailed: (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-    },
+    recordBorrowedBookRequest: (state) => { state.loading = true; },
+    recordBorrowedBookSuccess: (state, action) => { state.loading = false; state.message = action.payload; },
+    recordBorrowedBookFailed: (state, action) => { state.loading = false; state.error = action.payload; },
 
-    returnBorrowedBookRequest: (state) => {
-      state.loading = true;
-    },
-    returnBorrowedBookSuccess: (state, action) => {
-      state.loading = false;
-      state.message = action.payload;
-    },
-    returnBorrowedBookFailed: (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-    },
+    returnBorrowedBookRequest: (state) => { state.loading = true; },
+    returnBorrowedBookSuccess: (state, action) => { state.loading = false; state.message = action.payload; },
+    returnBorrowedBookFailed: (state, action) => { state.loading = false; state.error = action.payload; },
 
     resetBorrowSlice: (state) => {
       state.loading = false;
@@ -88,12 +63,12 @@ export const {
 
 export default borrowSlice.reducer;
 
+// -------- THUNKS -------- //
+
 export const fetchUserBorrowedBooks = () => async (dispatch) => {
   dispatch(fetchUserBorrowedBooksRequest());
   try {
-    const { data } = await axios.get("http://localhost:4000/api/v1/borrow/my-borrowed-books", {
-      withCredentials: true,
-    });
+    const { data } = await axios.get(`${BASE_URL}/api/v1/borrow/my-borrowed-books`, { withCredentials: true });
     dispatch(fetchUserBorrowedBooksSuccess(data.borrowedBooks));
   } catch (err) {
     dispatch(fetchUserBorrowedBooksFailed(err.response?.data?.message || "Failed"));
@@ -103,9 +78,7 @@ export const fetchUserBorrowedBooks = () => async (dispatch) => {
 export const fetchAllBorrowedBooks = () => async (dispatch) => {
   dispatch(fetchAllBorrowedBooksRequest());
   try {
-    const { data } = await axios.get("http://localhost:4000/api/v1/borrow/borrowed-books-by-user", {
-      withCredentials: true,
-    });
+    const { data } = await axios.get(`${BASE_URL}/api/v1/borrow/borrowed-books-by-user`, { withCredentials: true });
     dispatch(fetchAllBorrowedBooksSuccess(data.borrowedBooks));
   } catch (err) {
     dispatch(fetchAllBorrowedBooksFailed(err.response?.data?.message || "Failed"));
@@ -115,10 +88,11 @@ export const fetchAllBorrowedBooks = () => async (dispatch) => {
 export const recordBorrowedBook = ({ bookId, email }) => async (dispatch) => {
   dispatch(recordBorrowedBookRequest());
   try {
-    const { data } = await axios.post(`http://localhost:4000/api/v1/borrow/record-borrow-book/${bookId}`, { email }, {
-      withCredentials: true,
-      headers: { "Content-Type": "application/json" },
-    });
+    const { data } = await axios.post(
+      `${BASE_URL}/api/v1/borrow/record-borrow-book/${bookId}`,
+      { email },
+      { withCredentials: true, headers: { "Content-Type": "application/json" } }
+    );
     dispatch(recordBorrowedBookSuccess(data.message));
     dispatch(toggleRecordBookPopup());
   } catch (err) {
@@ -126,30 +100,23 @@ export const recordBorrowedBook = ({ bookId, email }) => async (dispatch) => {
   }
 };
 
-
 export const returnBorrowedBook = ({ bookId, email }) => async (dispatch) => {
   dispatch(returnBorrowedBookRequest());
   try {
     const { data } = await axios.put(
-      `${API}/return-borrowed-book/${bookId}`,
+      `${BASE_URL}/api/v1/borrow/return-borrowed-book/${bookId}`,
       { email },
-      {
-        withCredentials: true,
-        headers: {
-          "Content-Type": "application/json",
-        },
-      }
+      { withCredentials: true, headers: { "Content-Type": "application/json" } }
     );
     dispatch(returnBorrowedBookSuccess(data.message));
-    return data; // so .then(res => toast.success(res.message)) is also possible
+    return data; // so .then(res => toast.success(res.message)) works
   } catch (err) {
     const errorMsg = err.response?.data?.message || "Failed";
     dispatch(returnBorrowedBookFailed(errorMsg));
-    throw new Error(errorMsg); // allows .catch() to receive it
+    throw new Error(errorMsg);
   }
 };
 
-
-export const resetBookSlice = ()=> (dispatch)=> {
-  dispatch(borrowSlice.actions.resetBorrowSlice)
+export const resetBorrow = () => (dispatch) => {
+  dispatch(borrowSlice.actions.resetBorrowSlice());
 };
