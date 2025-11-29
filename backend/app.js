@@ -16,7 +16,7 @@ config({path: "./config/config.env"});
 
 app.use(
     cors({
-    origin: "https://library-mng-pro-6mq6.vercel.app",
+    origin: process.env.FRONTEND_URL,
     methods: ["GET","POST","PUT","DELETE"],
     credentials: true,
 }));
