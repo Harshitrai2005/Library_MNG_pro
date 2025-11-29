@@ -8,6 +8,7 @@ import { sendToken } from "../utils/sendToken.js";
 import { sendEmail } from "../utils/sendEmails.js";
 import { generateForgotPasswordEmailTemplate } from "../utils/emailTemplates.js";
 
+// ---------- REGISTER ----------
 export const register = catchAsyncErrors(async(req, res,next)=>{
     try {
         const {name, email, password}= req.body;
@@ -49,6 +50,7 @@ export const register = catchAsyncErrors(async(req, res,next)=>{
     }
 });
 
+// ---------- OTP VERIFICATION ----------
 export const verifyOTP = catchAsyncErrors(async (req, res, next)=>{
     const { email, otp} = req.body;
     if(!email || !otp ){
@@ -81,10 +83,7 @@ export const verifyOTP = catchAsyncErrors(async (req, res, next)=>{
             return next(new Errorhandler("Invalid OTP.", 400));
         }
         const currentTime = Date.now();
-
-        const verificationCodeExpire = new Date(
-            user.verificationCodeExpire
-        ).getTime();
+        const verificationCodeExpire = new Date(user.verificationCodeExpire).getTime();
 
         if(currentTime > verificationCodeExpire) {
             return next(new Errorhandler("OTP expired.", 400));
@@ -94,13 +93,14 @@ export const verifyOTP = catchAsyncErrors(async (req, res, next)=>{
         user.verificationCodeExpire =  null;
         await user.save({ validateModifiedOnly: true});
 
+        // SEND TOKEN WITH COOKIES UPDATED FOR DEPLOYMENT
         sendToken(user, 200, "Account Verified.", res);
     } catch(error) {
         return next(new Errorhandler("Internal server error.", 500));
     }
-
 });
 
+// ---------- LOGIN ----------
 export const login = catchAsyncErrors(async ( req, res, next)=> {
     const { email, password } = req.body;
     if(!email || !password) {
@@ -116,31 +116,36 @@ export const login = catchAsyncErrors(async ( req, res, next)=> {
     if(!isPasswordMatched){
         return next(new  Errorhandler(" Invalid email or password.",400));
     }
-    sendToken( user,200, "User login successfully.", res);
+
+    sendToken(user,200, "User login successfully.", res);
 });
 
-
+// ---------- LOGOUT ----------
 export const logout = catchAsyncErrors(async ( req, res, next)=> {
     res
     .status(200)
     .cookie("token", "", {
         expires: new Date(Date.now()),
         httpOnly: true,
+        secure: true,      // required for HTTPS
+        sameSite: "None",  // allow cross-origin
     })
     .json({
         success: true,
-        message: "logged out successfully.",
+        message: "Logged out successfully.",
     });
 });
 
+// ---------- GET USER ----------
 export const getUser = catchAsyncErrors(async( req, res, next)=>{
-const user = req.user;
-res.status(200).json({
-    success: true,
-    user,
-})
+    const user = req.user;
+    res.status(200).json({
+        success: true,
+        user,
+    });
 });
 
+// ---------- FORGOT PASSWORD ----------
 export const forgotPassword= catchAsyncErrors(async (req, res,next)=> {
     if(!req.body.email){
         return next (new Errorhandler("Email is required.",400));
@@ -175,10 +180,10 @@ export const forgotPassword= catchAsyncErrors(async (req, res,next)=> {
         user.resetPasswordExpire= undefined;
         await user.save({ validateBeforeSave: false});
         return next(new Errorhandler(error.message,500));
-        
     }
 });
 
+// ---------- RESET PASSWORD ----------
 export const resetPassword = catchAsyncErrors(async (req, res, next) => {
   const { token } = req.params;
 
@@ -232,13 +237,13 @@ export const resetPassword = catchAsyncErrors(async (req, res, next) => {
   sendToken(user, 200, "Password reset successfully", res);
 });
 
+// ---------- UPDATE PASSWORD ----------
 export const updatePassword=catchAsyncErrors(async (req,res,next)=>{
        const user=await User.findById(req.user._id).select("+password");
        const {currentPassword,newPassword,confirmNewPassword}=req.body;
        if(!currentPassword || !newPassword || !confirmNewPassword){
         return next(new Errorhandler("Please enter all the fields properly",400));
        }
-       
        
        const isPasswordmatched=await bcrypt.compare(currentPassword,user.password);
        if(!isPasswordmatched){
@@ -261,11 +266,13 @@ export const updatePassword=catchAsyncErrors(async (req,res,next)=>{
        user.password=hashedPassword;
        await user.save();
 
-    res.status(200).cookie("token"," ",{
-    expires:new Date(Date.now()),
-    httpOnly:true,
+    res.status(200).cookie("token","",{
+        expires:new Date(Date.now()),
+        httpOnly:true,
+        secure: true,
+        sameSite: "None",
      }).json({
         success:true,
         message:"Password Updated Successfully",
-       })
+    })
 })
