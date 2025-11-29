@@ -1,20 +1,28 @@
 import nodemailer from "nodemailer";
 
 export const sendEmail = async ({ email, subject, message }) => {
-  const transporter = nodemailer.createTransport({
-    host: "smtp-relay.brevo.com",
-    port: 587,
-    secure: false, // TLS on port 587
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASSWORD,
-    },
-  });
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST,
+      port: Number(process.env.SMTP_PORT),
+      secure: false, // TLS on port 587
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASSWORD,
+      },
+    });
 
-  await transporter.sendMail({
-    from: process.env.SMTP_USER,
-    to: email,
-    subject,
-    html: message,
-  });
+    const info = await transporter.sendMail({
+      from: process.env.FROM_EMAIL, // verified sender
+      to: email,
+      subject,
+      html: message,
+    });
+
+    console.log("Email sent:", info.messageId);
+    return info;
+  } catch (error) {
+    console.error("Error sending email:", error);
+    throw error;
+  }
 };
